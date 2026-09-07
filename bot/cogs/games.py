@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import traceback
 
 import discord
@@ -12,6 +13,8 @@ from discord.ext import commands
 from ..config import GAMES, LOBBY_SECONDS, fmt
 from ..db import Database
 from ..games import GAME_CLASSES, Lobby
+
+log = logging.getLogger(__name__)
 
 
 class GameSelect(discord.ui.Select):
@@ -56,12 +59,22 @@ class GameCog(commands.Cog):
         assert isinstance(member, discord.Member)
         channel = interaction.channel
 
+        game_config = GAMES.get(key)
+        game_class = GAME_CLASSES.get(key)
+        if game_config is None or game_class is None:
+            message = "❌ Game này không còn khả dụng. Gõ `/game` để tải lại danh sách."
+            if interaction.response.is_done():
+                await interaction.followup.send(message, ephemeral=True)
+            else:
+                await interaction.response.send_message(message, ephemeral=True)
+            return
+
         if channel.id in self.active:
             await interaction.response.send_message(
                 "❌ Kênh này đang có một ván đang diễn ra, chờ xong đã!", ephemeral=True
             )
             return
-        emoji, name, fee, _minp, _maxp = GAMES[key]
+        emoji, name, fee, _minp, _maxp = game_config
         if self.db.coins(interaction.guild.id, member.id) < fee:
             await interaction.response.send_message(
                 f"❌ Bạn cần {fmt(fee)} 🪙 để mở phòng {name}.", ephemeral=True
@@ -75,7 +88,7 @@ class GameCog(commands.Cog):
         try:
             try:
                 await asyncio.wait_for(lobby.started.wait(), timeout=LOBBY_SECONDS)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
             lobby.stop()
             await lobby.message.edit(view=None)
@@ -90,7 +103,7 @@ class GameCog(commands.Cog):
                 )
                 return
 
-            game = GAME_CLASSES[key](self.db, channel, interaction.guild, players, fee)
+            game = game_class(self.db, channel, interaction.guild, players, fee)
             game.collect_fees()
             await channel.send(
                 f"{emoji} **{name.upper()} BẮT ĐẦU!**\n"
@@ -98,8 +111,14 @@ class GameCog(commands.Cog):
             )
             await game.play()
         except Exception:  # pragma: no cover - báo lỗi trong Discord
+            log.exception("Minigame %s failed in channel %s", key, channel.id)
             traceback.print_exc()
-            await channel.send("💥 Ván đấu gặp lỗi và đã dừng lại.")
+            if interaction.response.is_done():
+                await channel.send("💥 Ván đấu gặp lỗi và đã dừng lại. Hãy thử mở phòng mới.")
+            else:
+                await interaction.response.send_message(
+                    "💥 Không thể mở ván đấu lúc này. Hãy thử lại.", ephemeral=True
+                )
         finally:
             self.active.discard(channel.id)
 

@@ -34,6 +34,18 @@ from ..db import Database
 from ..utils import farm_embed, remaining
 
 
+def parse_plant_quantity(raw: str, free_slots: int) -> int:
+    """Parse a quantity entered in the planting modal.
+
+    ``all`` (and its Vietnamese variants) means every currently available
+    plot. Keeping this pure makes the user input easy to validate and test.
+    """
+    value = raw.strip().lower()
+    if value in {"all", "tat ca", "tất cả", "*"}:
+        return free_slots
+    return int(value)
+
+
 class PlantModal(discord.ui.Modal):
     def __init__(self, db: Database, crop_key: str, free_slots: int) -> None:
         crop = CROPS[crop_key]
@@ -42,10 +54,10 @@ class PlantModal(discord.ui.Modal):
         self.crop_key = crop_key
         self.free_slots = free_slots
         self.qty: discord.ui.TextInput = discord.ui.TextInput(
-            label=f"Số lượng (còn {free_slots} ô trống)",
-            placeholder="1",
+            label=f"Số lượng hoặc all (còn {free_slots} ô trống)",
+            placeholder="Nhập số, hoặc all để trồng hết",
             default="1",
-            max_length=3,
+            max_length=8,
             required=True,
         )
         self.add_item(self.qty)
@@ -54,20 +66,23 @@ class PlantModal(discord.ui.Modal):
         assert interaction.guild is not None
         crop = CROPS[self.crop_key]
         try:
-            qty = int(str(self.qty.value).strip())
-        except ValueError:
+            qty = parse_plant_quantity(str(self.qty.value), self.free_slots)
+        except (TypeError, ValueError):
             await interaction.response.send_message("❌ Số lượng không hợp lệ.", ephemeral=True)
             return
         if qty < 1:
             await interaction.response.send_message("❌ Số lượng phải ≥ 1.", ephemeral=True)
             return
-        if qty > self.free_slots:
+        gid, uid = interaction.guild.id, interaction.user.id
+        # Recalculate because another interaction may have filled a plot
+        # while this modal was open.
+        current_free_slots = self.db.plot_count(gid, uid) - len(self.db.plants(gid, uid))
+        if qty > current_free_slots:
             await interaction.response.send_message(
-                f"❌ Chỉ còn {self.free_slots} ô đất trống.", ephemeral=True
+                f"❌ Chỉ còn {current_free_slots} ô đất trống.", ephemeral=True
             )
             return
         cost = crop.seed_price * qty
-        gid, uid = interaction.guild.id, interaction.user.id
         if self.db.coins(gid, uid) < cost:
             await interaction.response.send_message(
                 f"❌ Không đủ tiền! Cần {fmt(cost)} 🪙.", ephemeral=True

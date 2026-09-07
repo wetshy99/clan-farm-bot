@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from bot.cogs.farm import parse_plant_quantity
 from bot.config import CROPS, PLOT_LEVELS, STARTING_COINS
 from bot.db import Database
 
@@ -33,6 +34,15 @@ def test_plant_harvest_sell_flow(db: Database) -> None:
     assert to_clan == int(crop.sell_price * 0.10)
     assert db.fund(1) == to_clan
     assert db.coins(1, 100) == STARTING_COINS - crop.seed_price + gain
+
+
+@pytest.mark.parametrize("value", ["all", "ALL", "tất cả", "tat ca", "*"])
+def test_plant_quantity_all_uses_available_slots(value: str) -> None:
+    assert parse_plant_quantity(value, 7) == 7
+
+
+def test_plant_quantity_accepts_number() -> None:
+    assert parse_plant_quantity(" 3 ", 7) == 3
 
 
 def test_watering_reduces_ready_time(db: Database) -> None:
