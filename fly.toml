@@ -1,0 +1,13 @@
+app = "clan-farm-bot"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[mounts]
+  source = "clanfarm_data"
+  destination = "/app/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
