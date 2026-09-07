@@ -7,7 +7,6 @@ import logging
 import os
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -43,22 +42,6 @@ class ClanFarmBot(commands.Bot):
         await self.change_presence(
             activity=discord.Game(name="/farm • /game • /thongtin • /diemdanh")
         )
-
-    async def on_app_command_error(
-        self,
-        interaction: discord.Interaction,
-        error: app_commands.AppCommandError,
-    ) -> None:
-        """Always acknowledge command failures instead of showing Discord's timeout."""
-        log.exception("Slash command failed: %s", error)
-        message = "⚠️ Bot gặp lỗi khi mở lệnh. Thử lại sau vài giây."
-        try:
-            if interaction.response.is_done():
-                await interaction.followup.send(message, ephemeral=True)
-            else:
-                await interaction.response.send_message(message, ephemeral=True)
-        except discord.HTTPException:
-            log.exception("Không thể gửi thông báo lỗi slash command")
 
 
 async def main() -> None:
