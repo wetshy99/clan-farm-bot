@@ -10,17 +10,6 @@ import discord
 from ..config import GAME_TAX, GAMES, LOBBY_SECONDS, fmt
 from ..db import Database
 
-MAX_BET = 1_000_000
-
-
-def parse_bet_amount(raw: str, minimum: int) -> int:
-    """Parse a Vietnamese-friendly bet amount such as ``10.000``."""
-    value = raw.strip().replace(".", "").replace(",", "")
-    amount = int(value)
-    if amount < minimum or amount > MAX_BET:
-        raise ValueError
-    return amount
-
 
 class BaseGame:
     """Lớp cơ sở cho một ván minigame."""
@@ -89,26 +78,19 @@ class BaseGame:
 class Lobby(discord.ui.View):
     """Phòng chờ chung cho mọi minigame."""
 
-    def __init__(
-        self,
-        db: Database,
-        game_key: str,
-        host: discord.Member,
-        fee: int | None = None,
-    ) -> None:
+    def __init__(self, db: Database, game_key: str, host: discord.Member) -> None:
         super().__init__(timeout=LOBBY_SECONDS)
         self.db = db
         self.game_key = game_key
         self.host = host
-        emoji, name, default_fee, minp, maxp = GAMES[game_key]
-        self.emoji, self.name, self.min_fee, self.min_players, self.max_players = (
+        emoji, name, fee, minp, maxp = GAMES[game_key]
+        self.emoji, self.name, self.fee, self.min_players, self.max_players = (
             emoji,
             name,
-            default_fee,
+            fee,
             minp,
             maxp,
         )
-        self.fee = fee if fee is not None else default_fee
         self.players: list[discord.Member] = [host]
         self.message: discord.Message | None = None
         self.started = asyncio.Event()
@@ -136,19 +118,6 @@ class Lobby(discord.ui.View):
     async def update(self) -> None:
         if self.message:
             await self.message.edit(embed=self.embed(), view=self)
-
-    @discord.ui.button(label="Đặt cược", emoji="💰", style=discord.ButtonStyle.secondary)
-    async def bet(self, interaction: discord.Interaction, _: discord.ui.Button) -> None:
-        if interaction.user.id != self.host.id:
-            await interaction.response.send_message("❌ Chỉ chủ phòng đổi cược được.", ephemeral=True)
-            return
-        if len(self.players) > 1:
-            await interaction.response.send_message(
-                "❌ Không thể đổi cược sau khi đã có người tham gia. Hủy phòng và tạo lại nhé.",
-                ephemeral=True,
-            )
-            return
-        await interaction.response.send_modal(LobbyBetModal(self))
 
     @discord.ui.button(label="THAM GIA", emoji="🎮", style=discord.ButtonStyle.success)
     async def join(self, interaction: discord.Interaction, _: discord.ui.Button) -> None:
@@ -216,40 +185,6 @@ class Lobby(discord.ui.View):
     def guild_id(interaction: discord.Interaction) -> int:
         assert interaction.guild is not None
         return interaction.guild.id
-
-
-class LobbyBetModal(discord.ui.Modal):
-    def __init__(self, lobby: Lobby) -> None:
-        super().__init__(title="Đặt cược cho phòng")
-        self.lobby = lobby
-        self.amount: discord.ui.TextInput = discord.ui.TextInput(
-            label=f"Mức cược (tối thiểu {fmt(lobby.min_fee)} 🪙)",
-            placeholder="Ví dụ: 10.000",
-            default=str(lobby.fee),
-            max_length=10,
-            required=True,
-        )
-        self.add_item(self.amount)
-
-    async def on_submit(self, interaction: discord.Interaction) -> None:
-        try:
-            amount = parse_bet_amount(str(self.amount.value), self.lobby.min_fee)
-        except (TypeError, ValueError):
-            await interaction.response.send_message(
-                f"❌ Cược phải từ {fmt(self.lobby.min_fee)} đến {fmt(MAX_BET)} 🪙.",
-                ephemeral=True,
-            )
-            return
-        if self.lobby.db.coins(self.lobby.guild_id(interaction), self.lobby.host.id) < amount:
-            await interaction.response.send_message(
-                f"❌ Chủ phòng cần {fmt(amount)} 🪙 để mở phòng.", ephemeral=True
-            )
-            return
-        self.lobby.fee = amount
-        await interaction.response.send_message(
-            f"✅ Đã đặt cược **{fmt(amount)} 🪙** cho phòng.", ephemeral=True
-        )
-        await self.lobby.update()
 
 
 class ChoiceView(discord.ui.View):

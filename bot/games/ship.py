@@ -8,7 +8,6 @@ import random
 import discord
 
 from ..config import fmt
-from ..db import Database
 from .base import BaseGame, ChoiceButton, ChoiceView
 
 ROOMS = ["A", "B", "C", "D", "E", "F"]
@@ -17,17 +16,9 @@ LIFEBOAT_COST = 20_000
 
 
 class LifeboatView(discord.ui.View):
-    def __init__(
-        self,
-        doomed: list[discord.Member],
-        db: Database,
-        guild_id: int,
-        timeout: float = 8,
-    ) -> None:
+    def __init__(self, doomed: list[discord.Member], timeout: float = 8) -> None:
         super().__init__(timeout=timeout)
         self.doomed = doomed
-        self.db = db
-        self.guild_id = guild_id
         self.used: set[int] = set()
 
     @discord.ui.button(label="XUỒNG CỨU HỘ (20.000 🪙)", emoji="🛟", style=discord.ButtonStyle.success)
@@ -40,13 +31,7 @@ class LifeboatView(discord.ui.View):
         if interaction.user.id in self.used:
             await interaction.response.send_message("❌ Bạn đã dùng xuồng rồi.", ephemeral=True)
             return
-        if self.db.coins(self.guild_id, interaction.user.id) < LIFEBOAT_COST:
-            await interaction.response.send_message(
-                f"❌ Cần {fmt(LIFEBOAT_COST)} 🪙 để dùng xuồng cứu hộ.", ephemeral=True
-            )
-            return
         self.used.add(interaction.user.id)
-        self.db.add_coins(self.guild_id, interaction.user.id, -LIFEBOAT_COST)
         await interaction.response.send_message(
             "🛟 Bạn nhảy lên xuồng cứu hộ và thoát chết! (-20.000 🪙)", ephemeral=True
         )
@@ -92,7 +77,7 @@ class ShipGame(BaseGame):
 
             eligible = [p for p in doomed if p.id not in used_boat]
             if eligible:
-                boat = LifeboatView(eligible, self.db, self.guild.id)
+                boat = LifeboatView(eligible)
                 bmsg = await self.send(
                     "🛟 Còn 8 giây để dùng **Xuồng cứu hộ** (20.000 🪙, mỗi ván 1 lần)!", view=boat
                 )
@@ -101,6 +86,7 @@ class ShipGame(BaseGame):
                 await bmsg.edit(view=None)
                 for uid in boat.used:
                     used_boat.add(uid)
+                    self.db.add_coins(self.guild.id, uid, -LIFEBOAT_COST)
                 doomed = [p for p in doomed if p.id not in boat.used]
 
             for p in doomed:

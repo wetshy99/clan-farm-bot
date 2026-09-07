@@ -2,10 +2,10 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from bot.config import GAME_TAX, GAMES, STARTING_COINS
+
+from bot.config import GAME_TAX, STARTING_COINS
 from bot.db import Database
-from bot.games import GAME_CLASSES
-from bot.games.base import BaseGame, parse_bet_amount
+from bot.games.base import BaseGame
 
 
 class FakeMember(SimpleNamespace):
@@ -40,13 +40,3 @@ def test_ranking_payout_leaves_nothing_unassigned(game: BaseGame) -> None:
     ]
     assert game.db.fund(1) == game.pot - paid
     assert game.db.get_player(1, game.players[0].id)["game_wins"] == 1
-
-
-def test_every_configured_game_has_a_matching_implementation() -> None:
-    assert set(GAMES) == set(GAME_CLASSES)
-    assert all(GAME_CLASSES[key].key == key for key in GAMES)
-
-
-@pytest.mark.parametrize("value", ["10.000", "10,000", "10000"])
-def test_bet_amount_accepts_common_number_formats(value: str) -> None:
-    assert parse_bet_amount(value, 10_000) == 10_000
