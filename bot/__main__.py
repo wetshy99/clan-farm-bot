@@ -21,7 +21,7 @@ COGS = ["bot.cogs.farm", "bot.cogs.games", "bot.cogs.profile"]
 class ClanFarmBot(commands.Bot):
     def __init__(self) -> None:
         intents = discord.Intents.default()
-        intents.members = True
+        intents.members = os.getenv("MEMBERS_INTENT", "").lower() in {"1", "true", "yes"}
         super().__init__(command_prefix="!cf ", intents=intents, help_command=None)
         self.db = Database()
 

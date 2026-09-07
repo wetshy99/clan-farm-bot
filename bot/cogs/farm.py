@@ -408,7 +408,7 @@ class FarmView(discord.ui.View):
             lines = []
             for i, r in enumerate(rows):
                 member = interaction.guild.get_member(int(r["user_id"]))
-                name = member.display_name if member else f"User {r['user_id']}"
+                name = member.display_name if member else f"<@{r['user_id']}>"
                 lines.append(f"{medals[i]} {name} — {fmt(r['value'])} {unit}")
             embed.add_field(name=title, value="\n".join(lines), inline=False)
         embed.add_field(name="🏦 Quỹ Clan", value=f"{fmt(db.fund(gid))} 🪙", inline=False)

@@ -39,7 +39,7 @@ cp .env.example .env      # điền DISCORD_TOKEN (và GUILD_ID nếu muốn syn
 .venv/bin/python -m bot
 ```
 
-Bot cần intent **Server Members** (bật trong Discord Developer Portal → Bot → Privileged Gateway Intents) và quyền `applications.commands` + gửi tin nhắn trong kênh.
+Bot chạy được với intent mặc định, chỉ cần quyền `applications.commands` + gửi tin nhắn trong kênh. Nếu muốn bảng xếp hạng hiện tên thay vì mention: bật **Server Members Intent** (Discord Developer Portal → Bot → Privileged Gateway Intents) rồi đặt `MEMBERS_INTENT=true` trong `.env`.
 
 Dữ liệu lưu ở SQLite `data/clanfarm.db` (tự tạo). Người chơi mới nhận 20.000 🪙 vốn ban đầu.
 

@@ -98,7 +98,7 @@ class IslandGame(BaseGame):
                         lm = self.guild.get_member(leader)
                         lines.append(
                             f"🏴‍☠️ {p.display_name} đào ô {cell} — cướp {loot} điểm kho báu của "
-                            f"{lm.display_name if lm else leader}!"
+                            f"{lm.display_name if lm else f'<@{leader}>'}!"
                         )
                         continue
                     lines.append(f"🏴‍☠️ {p.display_name} đào ô {cell} — hải tặc bỏ đi tay không.")

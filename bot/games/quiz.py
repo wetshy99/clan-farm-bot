@@ -137,8 +137,8 @@ class QuizGame(BaseGame):
                     lname = self.guild.get_member(leader)
                     fname = self.guild.get_member(fastest)
                     steal_line = (
-                        f"\n🏴‍☠️ {fname.display_name if fname else leader} cướp 100 điểm của "
-                        f"{lname.display_name if lname else leader}!"
+                        f"\n🏴‍☠️ {fname.display_name if fname else f'<@{fastest}>'} cướp 100 điểm của "
+                        f"{lname.display_name if lname else f'<@{leader}>'}!"
                     )
 
             board = " • ".join(
