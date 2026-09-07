@@ -2,7 +2,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 from bot.config import GAME_TAX, GAMES, STARTING_COINS
 from bot.db import Database
 from bot.games import GAME_CLASSES
