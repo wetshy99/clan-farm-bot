@@ -2,7 +2,6 @@ import time
 from pathlib import Path
 
 import pytest
-
 from bot.cogs.farm import parse_plant_quantity
 from bot.config import CROPS, PLOT_LEVELS, STARTING_COINS
 from bot.db import Database
